@@ -1,5 +1,5 @@
 import { async } from 'regenerator-runtime';
-import { API_URL, RES_PER_PAGE } from './config';
+import { API_URL, RES_PER_PAGE, KEY } from './config';
 import { getJSON, sendJSON } from './helpers';
 
 export const state = {
@@ -13,12 +13,9 @@ export const state = {
   bookmarks: [],
 };
 
-export const loadRecipe = async function (id) {
-  try {
-    const data = await getJSON(`${API_URL}/${id}`);
-
-    const { recipe } = data.data;
-    state.recipe = {
+createRecipeObject = function(data) {
+  const { recipe } = data.data;
+  return {
       id: recipe.id,
       title: recipe.title,
       publisher: recipe.publisher,
@@ -27,7 +24,15 @@ export const loadRecipe = async function (id) {
       servings: recipe.servings,
       cookingTime: recipe.cooking_time,
       ingredients: recipe.ingredients,
+      ...(recipe.key && {key: recipe.key}),
     };
+  };
+
+export const loadRecipe = async function (id) {
+  try {
+    const data = await getJSON(`${API_URL}/${id}`);
+    state.recipe = createRecipeObject(data);
+    
 
     if (state.bookmarks.some(bookmark => bookmark.id === id))
       state.recipe.bookmarked = true;
@@ -139,8 +144,9 @@ export const uploadRecipe = async function (newRecipe) {
       ingredients,
     };
 
-    console.log(recipe);
-    sendJSON(`${API_URL}`);
+    const data = await sendJSON(`${API_URL}?key=${KEY}`, recipe);
+    state.recipe = createRecipeObject(data);
+    addBookmark(state.recipe);
   } catch (err) {
     throw err;
   }
